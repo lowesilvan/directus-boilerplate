@@ -1,12 +1,12 @@
 ### Headless CMS - Directus + postgres + redis 
-- + here mpas extensions for directus
+- + here maps extensions for directus
 
 ## Getting Started
 **Perequisites:
 - make sure you have docker installed locally
 - make sure you have docker-compose installed locally
 - make sure you have task installed locally
--
+
 # How to run with docker locally
 - Clone this directus repository.
 - run `cd directus` to route into the directus directory.
