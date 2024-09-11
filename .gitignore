@@ -1,0 +1,6 @@
+directus/data
+directus/db
+directus/uploads
+directus/logs
+.env
+.idea/

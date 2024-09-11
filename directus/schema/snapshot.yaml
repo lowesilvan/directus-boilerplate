@@ -1,0 +1,6 @@
+version: 1
+directus: 11.0.2
+vendor: postgres
+collections: []
+fields: []
+relations: []

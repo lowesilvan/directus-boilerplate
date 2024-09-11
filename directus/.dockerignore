@@ -1,0 +1,5 @@
+/data
+/db
+/uploads
+/logs
+.env

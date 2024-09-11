@@ -1,0 +1,49 @@
+{
+	"name": "here-maps",
+	"description": "Please enter a description for your extension",
+	"icon": "extension",
+	"version": "1.0.1",
+	"keywords": [
+		"directus",
+		"directus-extension",
+		"directus-extension-bundle"
+	],
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"directus:extension": {
+		"type": "bundle",
+		"path": {
+			"app": "dist/app.js",
+			"api": "dist/api.js"
+		},
+		"entries": [
+			{
+				"type": "interface",
+				"name": "autocomplete",
+				"source": "src/autocomplete/index.ts"
+			},
+			{
+				"type": "endpoint",
+				"name": "here-api",
+				"source": "src/here-api/index.ts"
+			}
+		],
+		"host": "^10.10.0"
+	},
+	"scripts": {
+		"build": "directus-extension build",
+		"dev": "directus-extension build -w --no-minify",
+		"link": "directus-extension link",
+		"add": "directus-extension add"
+	},
+	"devDependencies": {
+		"@directus/extensions-sdk": "^11.0.10",
+		"@types/node": "^20.14.12",
+		"typescript": "^5.5.4",
+		"vitest": "^2.0.5",
+		"vitest-fetch-mock": "^0.3.0",
+		"vue": "^3.4.34"
+	}
+}

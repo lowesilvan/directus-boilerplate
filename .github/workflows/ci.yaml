@@ -1,0 +1,62 @@
+name: CI Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lint-dockerfile:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: ./directus/Dockerfile
+          format: json
+        env:
+          HADOLINT_FAIL_ON_ERROR: true
+
+  build_extensions_and_docker_build_push:
+    name: Build and push to docker hub
+    runs-on: ubuntu-latest
+    needs:
+      - lint-dockerfile
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.CI_ACCESS_TOKEN }}
+
+      - name: build extensions
+        run: cd directus && task extensions:build
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./directus
+          file: directus/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:v${{ github.run_number }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

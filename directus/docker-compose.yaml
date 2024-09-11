@@ -1,0 +1,67 @@
+name: shine-crm
+
+services:
+  database:
+    container_name: database
+    image: postgis/postgis:13-master
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - ./db/backup:/var/lib/postgresql/backup
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repareo"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    environment:
+      POSTGRES_USER: 'application'
+      POSTGRES_PASSWORD: 'application'
+      POSTGRES_DB: 'application'
+    depends_on:
+      - cache
+
+  cache:
+    container_name: cache
+    image: redis:6
+
+  directus:
+    container_name: directus
+    build: .
+    platform: linux/amd64
+    ports:
+      - 8055:8055
+    volumes:
+      - ./uploads:/directus/uploads
+      - ./schema:/directus/schema
+      - ./extensions:/directus/extensions
+      - ./logs:/directus/logs
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      KEY: '255d861b-5ea1-5996-9aa3-922530ec40b1'
+      SECRET: '6116487b-cda1-52c2-b5b5-c8022c45e263'
+
+      DB_CLIENT: 'pg'
+      DB_HOST: 'database'
+      DB_PORT: '5432'
+      DB_DATABASE: 'application'
+      DB_USER: 'application'
+      DB_PASSWORD: 'application'
+
+      CACHE_ENABLED: "true"
+      CACHE_AUTO_PURGE: "true"
+      CACHE_STORE: "redis"
+      REDIS: "redis://cache:6379"
+
+      LOG_LEVEL: 'warn'
+
+      # admin creds for UI
+      ADMIN_EMAIL: 'admin@application.com'
+      ADMIN_PASSWORD: 'application'
+
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8055/admin || exit 1
+      interval: 10s
+      timeout: 1s
+      retries: 30
+      start_period: 1s
