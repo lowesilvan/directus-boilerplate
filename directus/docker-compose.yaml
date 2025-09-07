@@ -1,14 +1,16 @@
-name: shine-crm
+name: cms
 
 services:
   database:
     container_name: database
-    image: postgis/postgis:13-master
+    image: postgis/postgis:15-master
     volumes:
-      - ./data:/var/lib/postgresql/data
-      - ./db/backup:/var/lib/postgresql/backup
+      - directus_postgres_data:/var/lib/postgresql/data
+      - directus_postgres_backup:/var/lib/postgresql/backup
+    ports:
+      - '${FORWARD_DB_PORT:-5432}:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U repareo"]
+      test: ["CMD-SHELL", "pg_isready -U application"]
       interval: 1s
       timeout: 1s
       retries: 30
@@ -16,12 +18,17 @@ services:
       POSTGRES_USER: 'application'
       POSTGRES_PASSWORD: 'application'
       POSTGRES_DB: 'application'
-    depends_on:
-      - cache
 
   cache:
     container_name: cache
     image: redis:6
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 1s
+      timeout: 1s
+      retries: 30
 
   directus:
     container_name: directus
@@ -30,16 +37,20 @@ services:
     ports:
       - 8055:8055
     volumes:
-      - ./uploads:/directus/uploads
+      - directus_upload_data:/directus/uploads
       - ./schema:/directus/schema
-      - ./extensions:/directus/extensions
-      - ./logs:/directus/logs
+      - directus_extensions_data:/directus/extensions
+      - directus_logs_data:/directus/logs
     depends_on:
       database:
         condition: service_healthy
+      mailhog:
+        condition: service_started
+      cache:
+        condition: service_healthy
     environment:
-      KEY: '255d861b-5ea1-5996-9aa3-922530ec40b1'
-      SECRET: '6116487b-cda1-52c2-b5b5-c8022c45e263'
+      KEY: 'change-me-in-production-255d861b-5ea1-5996-9aa3-922530ec40b1'
+      SECRET: 'change-me-in-production-6116487b-cda1-52c2-b5b5-c8022c45e263'
 
       DB_CLIENT: 'pg'
       DB_HOST: 'database'
@@ -55,9 +66,14 @@ services:
 
       LOG_LEVEL: 'warn'
 
-      # admin creds for UI
+      # you should change this and add 2fa in a production environment.
       ADMIN_EMAIL: 'admin@application.com'
       ADMIN_PASSWORD: 'application'
+
+      EMAIL_FROM: "info@application.com"
+      EMAIL_SMTP_HOST: "mailhog"
+      EMAIL_SMTP_PORT: "1025"
+      EMAIL_TRANSPORT: "smtp"
 
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:8055/admin || exit 1
@@ -65,3 +81,21 @@ services:
       timeout: 1s
       retries: 30
       start_period: 1s
+
+  mailhog:
+    container_name: mailhog
+    image: 'mailhog/mailhog:latest'
+    ports:
+      - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
+
+volumes:
+  directus_postgres_data:
+    driver: local
+  directus_postgres_backup:
+    driver: local
+  directus_upload_data:
+    driver: local
+  directus_extensions_data:
+    driver: local
+  directus_logs_data:
+    driver: local

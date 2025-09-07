@@ -1,0 +1,87 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list-all
+  extensions:build:
+    desc: loop through all extensions and run npm run build
+    summary: |
+      This task builds all Directus extensions by running `npm run build` in each extension directory.
+      It ensures that the `@directus/extensions-sdk` is installed if a `package.json` file exists.
+    cmd: |
+      for extension in $(ls -d directus/extensions/*); do
+        cd $extension
+        echo "Building $extension"
+        [ -f "package.json" ] && npm install @directus/extensions-sdk
+        [ -f "package.json" ] && npm run build
+        cd ../../
+      done
+  up:
+    desc: build extensions and run docker compose
+    summary: |
+      This task calls on the build task and runs the Docker Compose setup.
+    deps:
+      - extensions:build
+    cmd: |
+      docker compose -f directus/docker-compose.yaml up -d --build
+
+  export:schema:
+    desc: export the directus schema
+    summary: |
+      This task exports the Directus schema using a custom script.
+      It runs the `export.sh` script inside the Directus Docker container.
+    cmd: |
+      docker compose exec --user root directus chmod +x /directus/schema/export.sh
+      docker exec directus sh ./schema/export.sh
+
+  db:restore:
+    desc: Restore database from remote backup
+    summary: |
+      Copies a database dump from remote server, stops Directus,
+      restores the database, and restarts Directus.
+    cmd: |
+      echo "Copying database dump from remote server..."
+      scp <remote>:<directus>_dump <directus>_dump
+
+      echo "Stopping Directus container..."
+      docker compose -f directus/docker-compose.yaml stop directus
+
+      echo "Copying dump to database container..."
+      docker cp crm_backup_pg_dump database:/tmp/crm_backup_pg_dump
+
+      echo "Restoring database..."
+      docker exec database sh -c "pg_restore --no-owner --if-exists --clean --verbose -U application -d application  /tmp/crm_backup_pg_dump" || true
+      
+      echo "Cleaning up..."
+      docker exec database rm /tmp/crm_backup_pg_dump
+      rm crm_backup_pg_dump
+
+      echo "Starting Directus container..."
+      docker compose -f directus/docker-compose.yaml start directus
+
+      echo "Database restore completed!"
+
+  restart:
+    desc: Force recreate and restart all containers
+    summary: |
+      Force recreates and restarts all Docker Compose containers.
+    cmd: |
+      docker compose -f directus/docker-compose.yaml up -d --force-recreate --build
+
+  down:
+    desc: Shutdown and remove containers without deleting volumes
+    summary: |
+      Stops and removes all containers and networks, but preserves volumes.
+      Keeps your database data intact for next startup.
+    cmd: |
+      docker compose -f directus/docker-compose.yaml down --remove-orphans
+
+  clean:
+    desc: Stop and remove all containers, volumes, and images
+    summary: |
+      Stops and removes all containers, volumes, and networks.
+      Use with caution as this will delete all data.
+    cmd: |
+      docker compose -f directus/docker-compose.yaml down --volumes  --remove-orphans

@@ -1,41 +1,114 @@
-### Headless CMS - Directus + postgres + redis 
-- + here maps extensions for directus
+### CMS - Directus + postgres + redis + mailhog
+
+# Directus Boilerplate 🚀
+
+A production-ready, local-development-friendly boilerplate for spinning up a [Directus](https://directus.io) headless CMS instance with Docker. Get a full stack (Directus, PostgreSQL, Redis, MailHog) running with a single command.
+
+## Why Use This Boilerplate?
+*   **🧪 Production Parity:** Can mirror a production environment locally, ensuring your development and production setups are consistent. You can build and update your directus data model locally and push a prod ready image.
+*   **✨ Zero-Config Setup:** Clone, run `task up`, and you're done.
+*   **🧰 Sanity test:** Quickly test new directus releases locally before deploying.
+*   **📦 Pre-configured Services:** Directus, Postgres, Redis, and MailHog for email testing.
+*   **🔧 Extension Builder:** Automatically builds custom Directus extensions on startup.
+*   **📊 Schema Management:** Easy import/export of your Data Model schema.
+*   **📧 Email Testing:** Captures emails sent by Directus for easy debugging with MailHog.
+*   **🔄 CI/CD Ready:** Includes a GitHub Actions workflow to build and push Docker images automatically.
+*   **👥 Consistent dev environment:** possibility for different actors in a team to build model and test.
 
 ## Getting Started
 **Perequisites:
-- make sure you have docker installed locally
-- make sure you have docker-compose installed locally
-- make sure you have task installed locally
+*   Docker & Docker Compose
+-   [Task](https://taskfile.dev) (optional but recommended for easier task management)
+-   if you intend to restore a database dump from a remote, you have ssh access to the remote.
 
-# How to run with docker locally
-- Clone this directus repository.
-- run `cd directus` to route into the directus directory.
-- in the directus directory, run `task extensions:build:run` to spin-up Directus at `localhost:8055/admin/login`
+## Useful Commands
+Run `task` in the root directory of this repository. you should see a list of available commands.
+```task
+task: Available tasks for this project:
+* default:                 Show available tasks
+* up:                      build extensions and run docker compose
+* clean:                   Stop and remove all containers, volumes, and images
+* down:                    Shutdown and remove containers without deleting volumes
+* restart:                 Force recreate and restart all containers
+* db:restore:              Restore database from remote backup
+* export:schema:           export the directus schema
+* extensions:build:        loop through all extensions and run npm run build
+```
 
-## How to work with directus schema updates
+## Quick Start
+1. **Clone the repository**
+    ```bash
+    git clone https://github.com/lowesilvan/directus-boilerplate.git
+    cd directus-boilerplate
+    ```
+2.  **Launch the stack**
+    ```bash
+    task up
+    ```
+    This will build the image, start all containers, and build any extensions.
+3.  **Open Directus**
+      Navigate to `http://localhost:8055`
+     *   **Email:** `admin@application.com`
+     *   **Password:** `application`
+4.  **Check emails (optional)**
+    View captured emails in MailHog at `http://localhost:8025`
+
+## Project Structure
+```plaintext
+.
+├── docker-compose.yml # Defines all services
+├── Taskfile.yml # Task runner commands
+├── directus/schema/
+│ ├── export.sh # Script to dump the schema from the docker container
+│ └── snapshot.yaml # Your Data Model schema
+└── directus/extensions/ # custom extensions here
+└── directus/templates/email #  custome mail templates here
+└── .github/workflows/ci.yml # Github actions workflow to build docker image
+``` 
+
+## How to work with schema updates
 
 On startup, `directus` executes the script `./directus/schema/start.sh` updating the schema to the snapshot in `./directus/schema/snapshot.yaml`.
 
-If you want to *export* a directus schema, you can use the `docker exec directus sh ./schema/export.sh` script. It saves the directus schema to `./directus/schema/snapshot.yaml`. Docker-compose has to be up and running.
+If you want to export a directus schema, run `task export:schema` this will execute the `./schema/export.sh` script. It saves the container schema to `./directus/schema/snapshot.yaml`.
+```task
+task export:schema
+```
+note: the compose stack has to be up and running.
 
-```bash
-docker exec directus sh ./schema/export.sh
+you can build a new image locally with the updated schema by running:
+```task
+task restart
 ```
 
-If you want to *import* a directus schema, you can use the `docker exec directus sh ./schema/import.sh` script. It loads the directus schema from `./directus/schema/snapshot.yaml`. Docker-compose has to be up and running.
+or commit your updated snapshot file, and trigger the CI workflow to build a new image and push it to your docker registry.
 
-```bash
-docker exec directus sh ./schema/import.sh
-```
-When you're ready, push your updated snapshot file to the main branch.
 
-Then trigger the `CI` Workflow in Githaub actions to build new directus image with the updated schema & extensions.
+## Docker volumes mapping
+When running directus with docker, the data is persisted in volumes. The following directory and volumes are mapped to directus containers:
 
-## Folder Structuring Explained
-
+  // local directory
 - `./directus/schema` contains schema files
-- `./directus/data` contains all postgres database files
-- `./directus/uploads` contains all media files uploaded in directus
-- `./directus/extensions` conatins all directus extenstions
-- `./directus/logs` all in-app logs generated
-- `./directus/db/backup` contains generated database backup
+  // docker volumes
+- `directus_postgres_data` contains all postgres database files
+- `directus_postgres_backup` contains generated database backup
+- `directus_upload_data` contains all media files uploaded in directus
+- `directus_extensions_data` contains all directus extensions
+- `directus_logs_data` all in-app logs generated by directus
+
+## How to restore database from production
+task db:restore will restore the database from a remote server. It will download the latest backup from the remote server and restore it to the compose postgres database.
+You should have configured ssh config to access the remote server.
+
+note: 
+- this will overwrite the current database, so make sure you have a backup of your current database if you need to. 
+- update the db:restore task with your remote server details in the `Taskfile.yml` file.
+```task
+task db:restore
+```
+
+## clean
+To clean up all containers, volumes, and images, run:
+```task
+task clean
+```

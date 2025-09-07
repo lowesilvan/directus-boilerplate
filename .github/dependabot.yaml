@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directory: "/directus"
+    assignees:
+      - "lowesilvan"
+    schedule:
+      interval: "monthly"
