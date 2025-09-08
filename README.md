@@ -89,6 +89,7 @@ When running directus with docker, the data is persisted in volumes. The followi
 
   // local directory
 - `./directus/schema` contains schema files
+  
 // docker volumes
 - `directus_postgres_data` contains all postgres database files
 - `directus_postgres_backup` contains generated database backup
